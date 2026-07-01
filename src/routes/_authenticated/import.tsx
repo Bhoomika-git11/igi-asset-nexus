@@ -110,7 +110,7 @@ function ImportPage() {
           <label htmlFor="fileup" className="mt-4 cursor-pointer rounded-lg bg-primary/80 hover:bg-primary text-primary-foreground px-5 py-2 text-sm font-medium">Choose file</label>
           {file && <div className="mt-4 text-xs text-cyan-glow flex items-center gap-2"><FileSpreadsheet className="w-4 h-4" /> {file} · {rows.length} rows</div>}
         </div>
-      </GlassCard>
+      </div>
 
       {rows.length > 0 && (
         <GlassCard className="overflow-hidden">
