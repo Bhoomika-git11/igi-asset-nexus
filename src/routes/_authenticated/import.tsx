@@ -94,7 +94,7 @@ function ImportPage() {
       <PageHeader title="Excel Import" subtitle="Drop an .xlsx file to bulk-import assets. Existing assets with the same tag will be updated."
         actions={<button onClick={downloadTemplate} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-white/5">Download template</button>} />
 
-      <GlassCard className={`p-12 mb-6 border-2 border-dashed transition ${drag ? "border-cyan-glow bg-cyan-glow/5" : "border-border/60"}`}
+      <div className={`glass rounded-2xl p-12 mb-6 border-2 border-dashed transition ${drag ? "border-cyan-glow bg-cyan-glow/5" : "border-border/60"}`}
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={onDrop}
