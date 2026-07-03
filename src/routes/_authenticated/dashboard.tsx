@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Boxes, CheckCircle2, AlertTriangle, Archive, Package, TrendingUp } from "lucide-react";
 import { fetchInventory, statusColors, statusLabel } from "@/lib/inventory-api";
 import { PageContainer, PageHeader, GlassCard } from "@/components/PageChrome";
@@ -107,26 +107,47 @@ function Dashboard() {
   );
 }
 
+function useCountUp(target: number, duration = 1200) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const numeric = isFinite(target) ? target : 0;
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setN(numeric * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return n;
+}
+
 function StatCard({ label, value, icon: Icon, color, delay }: {
   label: string; value: number | string; icon: React.ComponentType<{ className?: string }>; color: string; delay: number;
 }) {
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const isNumeric = typeof value === "number";
+  const counted = useCountUp(isNumeric ? (value as number) : 0);
+  const display = isNumeric ? Math.round(counted).toLocaleString("en-IN") : value;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
       onMouseMove={(e) => {
         const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        setTilt({ x: ((e.clientY - r.top) / r.height - 0.5) * -8, y: ((e.clientX - r.left) / r.width - 0.5) * 8 });
+        setTilt({ x: ((e.clientY - r.top) / r.height - 0.5) * -12, y: ((e.clientX - r.left) / r.width - 0.5) * 12 });
       }}
       onMouseLeave={() => setTilt({ x: 0, y: 0 })}
-      style={{ transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
-      className="glass rounded-2xl p-5 relative overflow-hidden transition-transform"
+      style={{ transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateZ(0)` }}
+      className="glass rounded-2xl p-5 relative overflow-hidden transition-transform duration-200 hover:shadow-[0_0_40px_-5px_oklch(0.82_0.17_200/0.5)]"
     >
       <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full bg-gradient-to-br ${color} opacity-20 blur-2xl`} />
       <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center mb-3 shadow-lg`}>
         <Icon className="w-5 h-5 text-navy-deep" />
       </div>
-      <div className="text-2xl font-bold text-glow">{value}</div>
+      <div className="text-2xl font-bold text-glow">{display}</div>
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
     </motion.div>
   );

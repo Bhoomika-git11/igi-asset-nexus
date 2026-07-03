@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Plane, Lock, Mail, Loader2, ShieldCheck } from "lucide-react";
+import { Lock, Mail, Loader2, ShieldCheck, Plane } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ParticleField } from "@/components/ParticleField";
+import { AAILogo } from "@/components/AAILogo";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -55,6 +56,15 @@ function AuthPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden flex items-center justify-center px-4">
+      {/* Top-left brand */}
+      <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
+        <AAILogo className="w-12 h-12" />
+        <div>
+          <div className="text-sm font-bold leading-tight">Airports Authority</div>
+          <div className="text-[10px] uppercase tracking-widest text-cyan-glow">of India</div>
+        </div>
+      </div>
+
       {/* Backdrop */}
       <div className="absolute inset-0 grid-bg opacity-40" />
       <ParticleField />
@@ -69,30 +79,37 @@ function AuthPage() {
           transition={{ duration: 1, ease: "easeOut" }}
           className="hidden md:flex flex-col items-center gap-8"
         >
-          <div className="globe-scene relative flex items-center justify-center h-[400px] w-[400px]">
+          <div className="globe-scene relative flex items-center justify-center h-[460px] w-[460px]">
+            {/* Pulsing aura */}
+            <div className="globe-pulse" />
+            {/* Extra glowing orbital arcs */}
+            <div className="arc-line" style={{ inset: "-20px", transform: "rotate(15deg)" }} />
+            <div className="arc-line" style={{ inset: "-45px", transform: "rotate(-25deg)" }} />
+            <div className="arc-line" style={{ inset: "-75px", transform: "rotate(55deg)" }} />
+            <div className="arc-line" style={{ inset: "-105px", transform: "rotate(-70deg)" }} />
             <div className="globe-ring-2" />
             <div className="globe-ring" />
             <div className="globe" />
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            >
-              <Plane className="absolute top-4 w-8 h-8 text-cyan-glow drop-shadow-[0_0_10px_oklch(0.82_0.17_200)]" />
-            </motion.div>
+
+            {/* Airplane in circular orbit */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="animate-plane-orbit">
+                <Plane className="w-8 h-8 text-cyan-glow drop-shadow-[0_0_12px_oklch(0.82_0.17_200)]" style={{ transform: "rotate(90deg)" }} />
+              </div>
+            </div>
           </div>
           <div className="text-center">
             <motion.h1
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               className="text-4xl font-bold text-glow tracking-tight"
             >
-              Indira Gandhi International
+              Airports Authority of India
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
               className="mt-3 text-cyan-glow/80 text-sm uppercase tracking-[0.3em]"
             >
-              IT Asset Command Center · AAI
+              IT Asset Command Center
             </motion.p>
           </div>
         </motion.div>
