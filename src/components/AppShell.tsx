@@ -99,9 +99,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
-        <div className="relative">
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="relative"
+        >
           {children}
-        </div>
+        </motion.div>
       </main>
     </div>
   );
