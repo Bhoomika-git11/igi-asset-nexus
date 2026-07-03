@@ -2,10 +2,11 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, Boxes, BarChart3, Upload, Download, ScrollText,
-  Users, AlertTriangle, Printer, FolderTree, LogOut, Plane, Settings2,
+  Users, AlertTriangle, Printer, FolderTree, LogOut, Settings2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
+import { AAILogo } from "@/components/AAILogo";
 import { toast } from "sonner";
 
 const nav = [
@@ -38,14 +39,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="w-72 shrink-0 border-r border-border/40 glass-strong sticky top-0 h-screen flex flex-col">
         <div className="p-6 border-b border-border/40">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-glow to-electric flex items-center justify-center animate-pulse-glow">
-                <Plane className="w-6 h-6 text-navy-deep" />
-              </div>
-            </div>
+            <AAILogo className="w-11 h-11" />
             <div>
-              <div className="font-bold text-glow text-lg leading-none">IGI Portal</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">AAI · Asset Ops</div>
+              <div className="font-bold text-glow text-sm leading-tight">Airports Authority</div>
+              <div className="text-[10px] uppercase tracking-widest text-cyan-glow mt-0.5">of India · AAI</div>
             </div>
           </div>
         </div>
@@ -89,8 +86,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 relative">
-        <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none" />
+      <main className="flex-1 min-w-0 relative animate-bg-drift">
+        {/* Top navbar with AAI brand + glowing cyan underline */}
+        <div className="sticky top-0 z-20 backdrop-blur-xl bg-navy-deep/40 border-b border-cyan-glow/30 shadow-[0_1px_0_0_oklch(0.82_0.17_200/0.35),0_8px_30px_-10px_oklch(0.82_0.17_200/0.25)]">
+          <div className="flex items-center justify-between px-6 py-3">
+            <div className="flex items-center gap-3">
+              <AAILogo className="w-8 h-8" />
+              <div className="text-sm font-semibold tracking-tight">Airports Authority of India</div>
+              <span className="ml-3 text-[10px] uppercase tracking-widest text-cyan-glow/80 hidden sm:inline">IT Asset Command Center</span>
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{role ?? "..."} · {user?.email}</div>
+          </div>
+        </div>
+        <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
         <div className="relative">
           {children}
         </div>
