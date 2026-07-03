@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Boxes, CheckCircle2, AlertTriangle, Archive, Package, TrendingUp } from "lucide-react";
 import { fetchInventory, statusColors, statusLabel } from "@/lib/inventory-api";
 import { PageContainer, PageHeader, GlassCard } from "@/components/PageChrome";
@@ -109,15 +109,8 @@ function Dashboard() {
 
 function useCountUp(target: number, duration = 1200) {
   const [n, setN] = useState(0);
-  const numeric = typeof target === "number" && isFinite(target) ? target : 0;
-  const [start] = useState(() => performance.now());
-  const [current] = useState({ v: 0 });
-  useState(() => 0);
-  // simple rAF loop
-  if (typeof window !== "undefined") {
-    // Kick a rAF once per mount
-  }
-  useEffectOnce(() => {
+  useEffect(() => {
+    const numeric = isFinite(target) ? target : 0;
     let raf = 0;
     const t0 = performance.now();
     const tick = (t: number) => {
@@ -128,25 +121,8 @@ function useCountUp(target: number, duration = 1200) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  });
-  return Math.round(n);
-  // note: unused refs kept for clarity
-  void start; void current;
-}
-
-function useEffectOnce(fn: () => void | (() => void)) {
-  const [ran, setRan] = useState(false);
-  if (!ran) {
-    setRan(true);
-    // defer to after render
-    queueMicrotask(() => {
-      const cleanup = fn();
-      if (typeof cleanup === "function") {
-        // no unmount tracking; fine for dashboard mount
-        void cleanup;
-      }
-    });
-  }
+  }, [target, duration]);
+  return n;
 }
 
 function StatCard({ label, value, icon: Icon, color, delay }: {
@@ -155,7 +131,7 @@ function StatCard({ label, value, icon: Icon, color, delay }: {
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const isNumeric = typeof value === "number";
   const counted = useCountUp(isNumeric ? (value as number) : 0);
-  const display = isNumeric ? counted.toLocaleString("en-IN") : value;
+  const display = isNumeric ? Math.round(counted).toLocaleString("en-IN") : value;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
