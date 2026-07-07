@@ -76,67 +76,121 @@ export type Database = {
       }
       inventory: {
         Row: {
-          asset_tag: string
+          asset_tag: string | null
           assigned_to: string | null
           category_id: string | null
           category_name: string | null
+          cpu_make: string | null
+          cpu_model: string | null
+          cpu_serial: string | null
           created_at: string
           created_by: string | null
           department: string | null
+          designation: string | null
           id: string
           manufacturer: string | null
           model: string | null
           name: string
           notes: string | null
+          parent_id: string | null
+          printer_make: string | null
+          printer_model: string | null
+          printer_serial: string | null
           purchase_cost: number | null
           purchase_date: string | null
           room: string | null
+          s_no: number | null
+          scanner_make: string | null
+          scanner_model: string | null
+          scanner_serial: string | null
           serial_number: string | null
+          source_sheet: string | null
           status: Database["public"]["Enums"]["asset_status"]
+          status_text: string | null
+          sub_assigned_to: string | null
           updated_at: string
+          ups_make_model: string | null
+          ups_serial: string | null
           warranty_expiry: string | null
+          windows_os: string | null
         }
         Insert: {
-          asset_tag: string
+          asset_tag?: string | null
           assigned_to?: string | null
           category_id?: string | null
           category_name?: string | null
+          cpu_make?: string | null
+          cpu_model?: string | null
+          cpu_serial?: string | null
           created_at?: string
           created_by?: string | null
           department?: string | null
+          designation?: string | null
           id?: string
           manufacturer?: string | null
           model?: string | null
           name: string
           notes?: string | null
+          parent_id?: string | null
+          printer_make?: string | null
+          printer_model?: string | null
+          printer_serial?: string | null
           purchase_cost?: number | null
           purchase_date?: string | null
           room?: string | null
+          s_no?: number | null
+          scanner_make?: string | null
+          scanner_model?: string | null
+          scanner_serial?: string | null
           serial_number?: string | null
+          source_sheet?: string | null
           status?: Database["public"]["Enums"]["asset_status"]
+          status_text?: string | null
+          sub_assigned_to?: string | null
           updated_at?: string
+          ups_make_model?: string | null
+          ups_serial?: string | null
           warranty_expiry?: string | null
+          windows_os?: string | null
         }
         Update: {
-          asset_tag?: string
+          asset_tag?: string | null
           assigned_to?: string | null
           category_id?: string | null
           category_name?: string | null
+          cpu_make?: string | null
+          cpu_model?: string | null
+          cpu_serial?: string | null
           created_at?: string
           created_by?: string | null
           department?: string | null
+          designation?: string | null
           id?: string
           manufacturer?: string | null
           model?: string | null
           name?: string
           notes?: string | null
+          parent_id?: string | null
+          printer_make?: string | null
+          printer_model?: string | null
+          printer_serial?: string | null
           purchase_cost?: number | null
           purchase_date?: string | null
           room?: string | null
+          s_no?: number | null
+          scanner_make?: string | null
+          scanner_model?: string | null
+          scanner_serial?: string | null
           serial_number?: string | null
+          source_sheet?: string | null
           status?: Database["public"]["Enums"]["asset_status"]
+          status_text?: string | null
+          sub_assigned_to?: string | null
           updated_at?: string
+          ups_make_model?: string | null
+          ups_serial?: string | null
           warranty_expiry?: string | null
+          windows_os?: string | null
         }
         Relationships: [
           {
@@ -144,6 +198,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
         ]
