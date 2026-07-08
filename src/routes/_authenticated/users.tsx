@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader, GlassCard } from "@/components/PageChrome";
 import { useAuth, type Role } from "@/lib/auth";
+import { na } from "@/lib/inventory-api";
 import { toast } from "sonner";
-import { Shield, ShieldAlert, User as UserIcon } from "lucide-react";
+import { Shield, ShieldAlert, User as UserIcon, UserPlus, X, Send } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/users")({ component: UsersPage });
 
