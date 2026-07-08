@@ -2,18 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Pencil, Trash2, X, Save, Monitor, Printer, ScanLine, Zap } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Save, Send, FilterX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchCategories,
   fetchInventory,
+  na,
   statusColors,
   statusLabel,
   type AssetStatus,
   type InventoryRow,
 } from "@/lib/inventory-api";
 import { PageContainer, PageHeader, GlassCard } from "@/components/PageChrome";
-import { canDelete, canEdit, useAuth } from "@/lib/auth";
+import { canDelete, canEdit, canRequest, useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/inventory")({ component: InventoryPage });
@@ -23,336 +24,295 @@ const emptyForm: Partial<InventoryRow> = {
   department: "", room: "", assigned_to: "", status: "in_store",
   serial_number: "", manufacturer: "", model: "",
   purchase_date: null, purchase_cost: 0, warranty_expiry: null, notes: "",
+  designation: "", cpu_make: "", cpu_model: "", cpu_serial: "",
+  printer_make: "", printer_model: "", printer_serial: "",
+  ups_make_model: "", ups_serial: "", windows_os: "",
 };
 
-// Asset type tabs
-type AssetTab = "all" | "cpu" | "printer" | "scanner" | "ups";
-
 function InventoryPage() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const qc = useQueryClient();
   const { data: inv = [], isLoading } = useQuery({ queryKey: ["inventory"], queryFn: fetchInventory });
   const { data: cats = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
 
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<AssetStatus | "all">("all");
-  const [activeTab, setActiveTab] = useState<AssetTab>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [roomFilter, setRoomFilter] = useState("all");
+  const [assignedFilter, setAssignedFilter] = useState("all");
   const [page, setPage] = useState(1);
   const PER_PAGE = 25;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<InventoryRow>>(emptyForm);
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
+  const uniq = (arr: (string | null)[]) =>
+    Array.from(new Set(arr.map((v) => (v ?? "").trim()).filter(Boolean))).sort();
+  const departments = useMemo(() => uniq(inv.map((r) => r.department)), [inv]);
+  const rooms = useMemo(() => uniq(inv.map((r) => r.room)), [inv]);
+  const assignees = useMemo(() => uniq(inv.map((r) => r.assigned_to)), [inv]);
+  const categories = useMemo(
+    () => uniq([...inv.map((r) => r.category_name), ...cats.map((c) => c.name)]),
+    [inv, cats],
+  );
+
   const filtered = useMemo(() => {
-    const qq = q.toLowerCase();
+    const qq = q.toLowerCase().trim();
     return inv.filter((r) => {
-      // Status filter
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
-
-      // Tab filter — detect from notes field what type of asset it is
-      if (activeTab === "cpu") {
-        const notesHasCpu = (r.notes ?? "").toLowerCase().includes("cpu:");
-        const serialLooksLikeCpu = !!(r.serial_number && !r.notes?.toLowerCase().includes("printer:") && !r.notes?.toLowerCase().includes("ups:"));
-        if (!notesHasCpu && !serialLooksLikeCpu) return false;
-      }
-      if (activeTab === "printer") {
-        if (!(r.notes ?? "").toLowerCase().includes("printer:")) return false;
-      }
-      if (activeTab === "scanner") {
-        if (!(r.notes ?? "").toLowerCase().includes("scanner:")) return false;
-      }
-      if (activeTab === "ups") {
-        if (!(r.notes ?? "").toLowerCase().includes("ups:")) return false;
-      }
-
-      // Text search
+      if (categoryFilter !== "all" && (r.category_name ?? "") !== categoryFilter) return false;
+      if (departmentFilter !== "all" && (r.department ?? "") !== departmentFilter) return false;
+      if (roomFilter !== "all" && (r.room ?? "") !== roomFilter) return false;
+      if (assignedFilter !== "all" && (r.assigned_to ?? "") !== assignedFilter) return false;
       if (qq) {
-        const searchable = [
-          r.asset_tag, r.name, r.department, r.room,
-          r.assigned_to, r.serial_number, r.category_name,
-          r.manufacturer, r.model, r.notes,
-        ].map((v) => (v ?? "").toLowerCase());
-        if (!searchable.some((v) => v.includes(qq))) return false;
+        const hay = [
+          r.asset_tag, r.name, r.department, r.room, r.assigned_to,
+          r.serial_number, r.category_name, r.manufacturer, r.model,
+          r.designation, r.cpu_make, r.cpu_model, r.cpu_serial,
+          r.printer_make, r.printer_model, r.printer_serial,
+          r.scanner_serial, r.ups_make_model, r.ups_serial, r.windows_os, r.notes,
+        ].map((v) => (v ?? "").toLowerCase()).join(" | ");
+        if (!hay.includes(qq)) return false;
       }
-
       return true;
     });
-  }, [inv, q, statusFilter, activeTab]);
+  }, [inv, q, statusFilter, categoryFilter, departmentFilter, roomFilter, assignedFilter]);
 
-  // ── Pagination ─────────────────────────────────────────────────────────────
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const pageRows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
-  // Reset to page 1 on filter change
   const resetPage = () => setPage(1);
+  const clearFilters = () => {
+    setQ(""); setStatusFilter("all"); setCategoryFilter("all");
+    setDepartmentFilter("all"); setRoomFilter("all"); setAssignedFilter("all");
+    resetPage();
+  };
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
+  // Admin: direct write. Manager: submit approval request.
   const save = useMutation({
     mutationFn: async (payload: Partial<InventoryRow>) => {
       const cat = cats.find((c) => c.id === payload.category_id);
       const row = { ...payload, category_name: cat?.name ?? payload.category_name ?? null };
-      if (row.id) {
-        const { error } = await supabase.from("inventory").update(row).eq("id", row.id);
-        if (error) throw error;
-      } else {
-        const { id: _ignored, ...insertRow } = row as Record<string, unknown> & { id?: string };
-        const { error } = await supabase.from("inventory").insert(insertRow as never);
-        if (error) throw error;
+
+      if (role === "admin") {
+        if (row.id) {
+          const { error } = await supabase.from("inventory").update(row as never).eq("id", row.id);
+          if (error) throw error;
+        } else {
+          const { id: _ignored, ...insertRow } = row as Record<string, unknown> & { id?: string };
+          const { error } = await supabase.from("inventory").insert(insertRow as never);
+          if (error) throw error;
+        }
+        return { approved: true as const };
       }
+
+      // Manager path — submit approval request
+      const req = {
+        request_type: row.id ? "update_asset" : "create_asset",
+        target_id: row.id ?? null,
+        payload: row as never,
+        summary: row.id
+          ? `Update asset ${row.asset_tag ?? row.id}`
+          : `Create asset ${row.asset_tag ?? row.name ?? ""}`.trim(),
+        requested_by: user?.id,
+        requested_by_email: user?.email,
+      };
+      const { error } = await supabase.from("approval_requests" as never).insert(req as never);
+      if (error) throw error;
+      return { approved: false as const };
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Saved"); setOpen(false); },
+    onSuccess: (res) => {
+      if (res.approved) {
+        qc.invalidateQueries({ queryKey: ["inventory"] });
+        toast.success("Saved");
+      } else {
+        qc.invalidateQueries({ queryKey: ["approval_requests"] });
+        toast.success("Sent to admin for approval");
+      }
+      setOpen(false);
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("inventory").delete().eq("id", id);
+    mutationFn: async (r: InventoryRow) => {
+      if (role === "admin") {
+        const { error } = await supabase.from("inventory").delete().eq("id", r.id);
+        if (error) throw error;
+        return { approved: true as const };
+      }
+      const req = {
+        request_type: "delete_asset",
+        target_id: r.id,
+        payload: { asset_tag: r.asset_tag, name: r.name } as never,
+        summary: `Delete asset ${r.asset_tag ?? r.name ?? r.id}`,
+        requested_by: user?.id,
+        requested_by_email: user?.email,
+      };
+      const { error } = await supabase.from("approval_requests" as never).insert(req as never);
       if (error) throw error;
+      return { approved: false as const };
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Deleted"); },
+    onSuccess: (res) => {
+      if (res.approved) { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Deleted"); }
+      else { qc.invalidateQueries({ queryKey: ["approval_requests"] }); toast.success("Deletion sent for approval"); }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const openNew = () => { setEditing(emptyForm); setOpen(true); };
   const openEdit = (r: InventoryRow) => { setEditing(r); setOpen(true); };
 
-  // ── Parse notes field to extract CPU/Printer/Scanner/UPS info ─────────────
-  function parseNotes(notes: string | null) {
-    if (!notes) return {};
-    const result: Record<string, string> = {};
-    notes.split("|").forEach((part) => {
-      const trimmed = part.trim();
-      if (trimmed.startsWith("CPU:")) result.cpu = trimmed.replace("CPU:", "").trim();
-      else if (trimmed.startsWith("Printer:")) result.printer = trimmed.replace("Printer:", "").trim();
-      else if (trimmed.startsWith("Scanner:")) result.scanner = trimmed.replace("Scanner:", "").trim();
-      else if (trimmed.startsWith("UPS:")) result.ups = trimmed.replace("UPS:", "").trim();
-      else if (trimmed.startsWith("OS:")) result.os = trimmed.replace("OS:", "").trim();
-      else if (trimmed.startsWith("Designation:")) result.designation = trimmed.replace("Designation:", "").trim();
-      else if (trimmed.startsWith("Remarks:")) result.remarks = trimmed.replace("Remarks:", "").trim();
-      else if (trimmed.startsWith("Sheet:")) result.sheet = trimmed.replace("Sheet:", "").trim();
-    });
-    return result;
-  }
+  const showAdd = canEdit(role) || canRequest(role);
+  const showEdit = canEdit(role) || canRequest(role);
+  const showDelete = canDelete(role) || canRequest(role);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <PageContainer>
       <PageHeader
         title="Inventory"
-        subtitle={`${filtered.length} of ${inv.length} assets shown`}
+        subtitle={`${filtered.length} of ${inv.length} assets shown${canRequest(role) ? " · Manager actions are sent to admin for approval" : ""}`}
         actions={
-          canEdit(role) && (
+          showAdd && (
             <button
               onClick={openNew}
               className="rounded-lg bg-gradient-to-r from-electric to-cyan-glow text-navy-deep font-semibold px-4 py-2 text-sm flex items-center gap-2 hover:opacity-90"
             >
-              <Plus className="w-4 h-4" /> Add Asset
+              {canRequest(role) ? <Send className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {canRequest(role) ? "Request Asset" : "Add Asset"}
             </button>
           )
         }
       />
 
-      {/* Search + Status filter */}
-      <GlassCard className="p-4 mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[280px]">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={q}
-            onChange={(e) => { setQ(e.target.value); resetPage(); }}
-            placeholder="Search by name, serial, room, notes…"
-            className="w-full rounded-lg bg-input border border-border pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-cyan-glow"
-          />
+      {/* Filters */}
+      <GlassCard className="p-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+          <div className="relative lg:col-span-2">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={q}
+              onChange={(e) => { setQ(e.target.value); resetPage(); }}
+              placeholder="Search name, serial, room…"
+              className="w-full rounded-lg bg-input border border-border pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:border-cyan-glow"
+            />
+          </div>
+          <FilterSelect label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(v as AssetStatus | "all"); resetPage(); }}
+            options={[{ v: "all", l: "All statuses" }, ...(["in_use", "in_store", "faulty", "retired"] as const).map((s) => ({ v: s, l: statusLabel[s] }))]} />
+          <FilterSelect label="Category" value={categoryFilter} onChange={(v) => { setCategoryFilter(v); resetPage(); }}
+            options={[{ v: "all", l: "All categories" }, ...categories.map((c) => ({ v: c, l: c }))]} />
+          <FilterSelect label="Department" value={departmentFilter} onChange={(v) => { setDepartmentFilter(v); resetPage(); }}
+            options={[{ v: "all", l: "All departments" }, ...departments.map((d) => ({ v: d, l: d }))]} />
+          <FilterSelect label="Room" value={roomFilter} onChange={(v) => { setRoomFilter(v); resetPage(); }}
+            options={[{ v: "all", l: "All rooms" }, ...rooms.map((r) => ({ v: r, l: r }))]} />
+          <FilterSelect label="Assigned To" value={assignedFilter} onChange={(v) => { setAssignedFilter(v); resetPage(); }}
+            options={[{ v: "all", l: "All users" }, ...assignees.map((a) => ({ v: a, l: a }))]} />
+          <button onClick={clearFilters}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-white/[0.02] hover:bg-white/[0.06] text-xs text-muted-foreground py-2.5 transition">
+            <FilterX className="w-3.5 h-3.5" /> Clear
+          </button>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value as AssetStatus | "all"); resetPage(); }}
-          className="rounded-lg bg-input border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-glow"
-        >
-          <option value="all">All statuses</option>
-          {(["in_use", "in_store", "faulty", "retired"] as const).map((s) => (
-            <option key={s} value={s}>{statusLabel[s]}</option>
-          ))}
-        </select>
       </GlassCard>
 
-      {/* Asset type tabs */}
-      <div className="flex gap-2 mb-4 overflow-x-auto">
-        {([
-          { key: "all",     label: "All Assets",  icon: null },
-          { key: "cpu",     label: "CPU / Desktop", icon: <Monitor className="w-3.5 h-3.5" /> },
-          { key: "printer", label: "Printers",     icon: <Printer className="w-3.5 h-3.5" /> },
-          { key: "scanner", label: "Scanners",     icon: <ScanLine className="w-3.5 h-3.5" /> },
-          { key: "ups",     label: "UPS",          icon: <Zap className="w-3.5 h-3.5" /> },
-        ] as const).map(({ key, label, icon }) => (
-          <button
-            key={key}
-            onClick={() => { setActiveTab(key as AssetTab); resetPage(); }}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
-              activeTab === key
-                ? "bg-cyan-glow text-navy-deep"
-                : "glass border border-border/40 text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Table */}
       <GlassCard className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/40">
-                <Th>#</Th>
-                <Th>Tag</Th>
-                <Th>Assigned To</Th>
-                <Th>Designation</Th>
-                <Th>Room</Th>
-                <Th>CPU</Th>
-                <Th>Printer</Th>
-                <Th>UPS</Th>
-                <Th>OS</Th>
-                <Th>Status</Th>
-                <Th> </Th>
+                <Th>#</Th><Th>Tag</Th><Th>Assigned To</Th><Th>Designation</Th>
+                <Th>Department</Th><Th>Room</Th><Th>CPU</Th><Th>Printer</Th>
+                <Th>UPS</Th><Th>OS</Th><Th>Status</Th><Th> </Th>
               </tr>
             </thead>
             <tbody>
-              {isLoading && (
-                <tr>
-                  <td colSpan={11} className="p-8 text-center text-muted-foreground">Loading…</td>
-                </tr>
-              )}
+              {isLoading && (<tr><td colSpan={12} className="p-8 text-center text-muted-foreground">Loading…</td></tr>)}
               {!isLoading && filtered.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="p-12 text-center text-muted-foreground">
-                    No assets match your filter.
-                  </td>
-                </tr>
+                <tr><td colSpan={12} className="p-12 text-center text-muted-foreground">No assets match your filter.</td></tr>
               )}
-              {pageRows.map((r, i) => {
-                const parsed = parseNotes(r.notes);
-                return (
-                  <motion.tr
-                    key={r.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: Math.min(i * 0.01, 0.3) }}
-                    className="border-b border-border/20 hover:bg-white/[0.03] transition"
-                  >
-                    <Td className="text-muted-foreground text-xs">
-                      {(page - 1) * PER_PAGE + i + 1}
-                    </Td>
-                    <Td className="font-mono text-cyan-glow text-xs whitespace-nowrap">
-                      {r.asset_tag}
-                    </Td>
-                    <Td className="font-medium max-w-[120px]">
-                      <div className="truncate" title={r.assigned_to ?? r.name}>
-                        {r.assigned_to || r.name || "—"}
-                      </div>
-                    </Td>
-                    <Td className="text-muted-foreground text-xs">
-                      {parsed.designation || "—"}
-                    </Td>
-                    <Td className="text-xs">{r.room || "—"}</Td>
-                    <Td className="max-w-[150px]">
-                      {parsed.cpu ? (
-                        <div>
-                          <div className="text-xs truncate" title={parsed.cpu}>
-                            {parsed.cpu.split("(S/N:")[0].trim()}
-                          </div>
-                          {parsed.cpu.includes("S/N:") && (
-                            <div className="text-[9px] font-mono text-cyan-glow/70 truncate">
-                              {parsed.cpu.split("S/N:")[1]?.replace(")", "").trim()}
-                            </div>
-                          )}
+              {pageRows.map((r, i) => (
+                <motion.tr
+                  key={r.id}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  transition={{ delay: Math.min(i * 0.01, 0.3) }}
+                  className="border-b border-border/20 hover:bg-white/[0.03] transition align-top"
+                >
+                  <Td className="text-muted-foreground text-xs">{(page - 1) * PER_PAGE + i + 1}</Td>
+                  <Td className="font-mono text-cyan-glow text-xs whitespace-nowrap">{na(r.asset_tag)}</Td>
+                  <Td className="font-medium max-w-[140px]">
+                    <div className="truncate" title={r.assigned_to ?? r.name}>{na(r.assigned_to || r.name)}</div>
+                    {r.sub_assigned_to && <div className="text-[10px] text-muted-foreground truncate">↳ {r.sub_assigned_to}</div>}
+                  </Td>
+                  <Td className="text-muted-foreground text-xs">{na(r.designation)}</Td>
+                  <Td className="text-xs">{na(r.department)}</Td>
+                  <Td className="text-xs">{na(r.room)}</Td>
+                  <Td className="max-w-[160px]">
+                    {r.cpu_make || r.cpu_model || r.cpu_serial ? (
+                      <>
+                        <div className="text-xs truncate" title={`${r.cpu_make ?? ""} ${r.cpu_model ?? ""}`}>
+                          {[r.cpu_make, r.cpu_model].filter(Boolean).join(" ") || "Not Available"}
                         </div>
-                      ) : r.manufacturer ? (
-                        <div className="text-xs">{r.manufacturer} {r.model}</div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </Td>
-                    <Td className="max-w-[140px]">
-                      {parsed.printer ? (
-                        <div>
-                          <div className="text-xs truncate" title={parsed.printer}>
-                            {parsed.printer.split("(S/N:")[0].trim()}
-                          </div>
-                          {parsed.printer.includes("S/N:") && (
-                            <div className="text-[9px] font-mono text-cyan-glow/70 truncate">
-                              {parsed.printer.split("S/N:")[1]?.replace(")", "").trim()}
-                            </div>
-                          )}
+                        {r.cpu_serial && <div className="text-[9px] font-mono text-cyan-glow/70 truncate">{r.cpu_serial}</div>}
+                      </>
+                    ) : <span className="text-muted-foreground text-xs">Not Available</span>}
+                  </Td>
+                  <Td className="max-w-[150px]">
+                    {r.printer_make || r.printer_model || r.printer_serial ? (
+                      <>
+                        <div className="text-xs truncate" title={`${r.printer_make ?? ""} ${r.printer_model ?? ""}`}>
+                          {[r.printer_make, r.printer_model].filter(Boolean).join(" ") || "Not Available"}
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
+                        {r.printer_serial && <div className="text-[9px] font-mono text-cyan-glow/70 truncate">{r.printer_serial}</div>}
+                      </>
+                    ) : <span className="text-muted-foreground text-xs">Not Available</span>}
+                  </Td>
+                  <Td className="max-w-[120px] text-xs">
+                    <div className="truncate" title={r.ups_make_model ?? ""}>{na(r.ups_make_model)}</div>
+                    {r.ups_serial && <div className="text-[9px] font-mono text-cyan-glow/70 truncate">{r.ups_serial}</div>}
+                  </Td>
+                  <Td className="text-xs text-muted-foreground max-w-[90px]"><div className="truncate">{na(r.windows_os)}</div></Td>
+                  <Td>
+                    <span className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded border ${statusColors[r.status]}`}>
+                      {statusLabel[r.status]}
+                    </span>
+                  </Td>
+                  <Td>
+                    <div className="flex items-center gap-1 justify-end">
+                      {showEdit && (
+                        <IconBtn onClick={() => openEdit(r)} title={canRequest(role) ? "Request edit" : "Edit"}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </IconBtn>
                       )}
-                    </Td>
-                    <Td className="max-w-[100px]">
-                      {parsed.ups ? (
-                        <div className="text-xs truncate" title={parsed.ups}>
-                          {parsed.ups.split("(S/N:")[0].trim()}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
+                      {showDelete && (
+                        <IconBtn
+                          danger
+                          title={canRequest(role) ? "Request delete" : "Delete"}
+                          onClick={() => {
+                            const msg = canRequest(role)
+                              ? `Send delete request for ${r.asset_tag ?? r.name} to admin?`
+                              : `Delete ${r.asset_tag ?? r.name}?`;
+                            if (confirm(msg)) del.mutate(r);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </IconBtn>
                       )}
-                    </Td>
-                    <Td className="text-xs text-muted-foreground max-w-[80px]">
-                      <div className="truncate" title={parsed.os}>
-                        {parsed.os || "—"}
-                      </div>
-                    </Td>
-                    <Td>
-                      <span
-                        className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded border ${statusColors[r.status]}`}
-                      >
-                        {statusLabel[r.status]}
-                      </span>
-                    </Td>
-                    <Td>
-                      <div className="flex items-center gap-1 justify-end">
-                        {canEdit(role) && (
-                          <IconBtn onClick={() => openEdit(r)}>
-                            <Pencil className="w-3.5 h-3.5" />
-                          </IconBtn>
-                        )}
-                        {canDelete(role) && (
-                          <IconBtn
-                            onClick={() => {
-                              if (confirm(`Delete ${r.asset_tag}?`)) del.mutate(r.id);
-                            }}
-                            danger
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </IconBtn>
-                        )}
-                      </div>
-                    </Td>
-                  </motion.tr>
-                );
-              })}
+                    </div>
+                  </Td>
+                </motion.tr>
+              ))}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-border/40 flex items-center justify-between text-sm">
+          <div className="p-4 border-t border-border/40 flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="text-muted-foreground text-xs">
-              Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of{" "}
-              {filtered.length} assets
+              Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap">
               <PageBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>← Prev</PageBtn>
               {Array.from({ length: Math.min(totalPages, 7) }, (_, idx) => {
                 const pg = idx + 1;
-                return (
-                  <PageBtn key={pg} active={pg === page} onClick={() => setPage(pg)}>
-                    {pg}
-                  </PageBtn>
-                );
+                return <PageBtn key={pg} active={pg === page} onClick={() => setPage(pg)}>{pg}</PageBtn>;
               })}
               {totalPages > 7 && page < totalPages && (
                 <PageBtn onClick={() => setPage(totalPages)}>…{totalPages}</PageBtn>
@@ -368,6 +328,7 @@ function InventoryPage() {
           <AssetDialog
             initial={editing}
             cats={cats}
+            role={role}
             onClose={() => setOpen(false)}
             onSave={(v) => save.mutate(v)}
             saving={save.isPending}
@@ -378,35 +339,30 @@ function InventoryPage() {
   );
 }
 
-// ── Small helpers ──────────────────────────────────────────────────────────────
 function Th({ children }: { children: React.ReactNode }) {
   return <th className="px-4 py-3 whitespace-nowrap">{children}</th>;
 }
 function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <td className={`px-4 py-3 ${className}`}>{children}</td>;
 }
-function IconBtn({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
+function IconBtn({ children, onClick, danger, title }: { children: React.ReactNode; onClick: () => void; danger?: boolean; title?: string }) {
   return (
     <button
-      onClick={onClick}
+      onClick={onClick} title={title}
       className={`p-2 rounded-md transition ${danger ? "hover:bg-destructive/20 text-destructive" : "hover:bg-white/10 text-cyan-glow"}`}
     >
       {children}
     </button>
   );
 }
-function PageBtn({
-  children, onClick, disabled, active,
-}: {
+function PageBtn({ children, onClick, disabled, active }: {
   children: React.ReactNode; onClick: () => void; disabled?: boolean; active?: boolean;
 }) {
   return (
     <button
-      onClick={onClick}
-      disabled={disabled}
+      onClick={onClick} disabled={disabled}
       className={`px-3 py-1.5 rounded-lg text-xs transition ${
-        active
-          ? "bg-cyan-glow text-navy-deep font-bold"
+        active ? "bg-cyan-glow text-navy-deep font-bold"
           : "bg-white/5 hover:bg-white/10 text-muted-foreground disabled:opacity-30"
       }`}
     >
@@ -415,12 +371,28 @@ function PageBtn({
   );
 }
 
-// ── Add/Edit Dialog ────────────────────────────────────────────────────────────
+function FilterSelect({ label, value, onChange, options }: {
+  label: string; value: string; onChange: (v: string) => void; options: { v: string; l: string }[];
+}) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{label}</div>
+      <select
+        value={value} onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg bg-input border border-border px-3 py-2 text-sm focus:outline-none focus:border-cyan-glow"
+      >
+        {options.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function AssetDialog({
-  initial, cats, onClose, onSave, saving,
+  initial, cats, role, onClose, onSave, saving,
 }: {
   initial: Partial<InventoryRow>;
   cats: { id: string; name: string }[];
+  role: string | null;
   onClose: () => void;
   onSave: (v: Partial<InventoryRow>) => void;
   saving: boolean;
@@ -428,6 +400,9 @@ function AssetDialog({
   const [f, setF] = useState<Partial<InventoryRow>>(initial);
   const upd = <K extends keyof InventoryRow>(k: K, v: InventoryRow[K] | null) =>
     setF((s) => ({ ...s, [k]: v }));
+
+  const isManager = role === "manager";
+  const title = f.id ? (isManager ? "Request Asset Update" : "Edit Asset") : (isManager ? "Request New Asset" : "New Asset");
 
   return (
     <motion.div
@@ -441,58 +416,56 @@ function AssetDialog({
         className="glass-strong rounded-2xl p-8 w-full max-w-3xl my-8"
       >
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold">{f.id ? "Edit Asset" : "New Asset"}</h3>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10">
-            <X className="w-4 h-4" />
-          </button>
+          <div>
+            <h3 className="text-xl font-bold">{title}</h3>
+            {isManager && (
+              <p className="text-xs text-cyan-glow/80 mt-1">
+                This will be submitted for admin approval, not applied directly.
+              </p>
+            )}
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10"><X className="w-4 h-4" /></button>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Inp label="Asset Tag *" v={f.asset_tag ?? ""} on={(v) => upd("asset_tag", v)} />
           <Inp label="Assigned To *" v={f.assigned_to ?? ""} on={(v) => upd("assigned_to", v)} />
           <Inp label="Name / Description" v={f.name ?? ""} on={(v) => upd("name", v)} />
-          <Sel
-            label="Status"
-            v={f.status ?? "in_store"}
-            on={(v) => upd("status", v as AssetStatus)}
-            opts={(["in_use", "in_store", "faulty", "retired"] as const).map((s) => ({
-              v: s, l: statusLabel[s],
-            }))}
-          />
+          <Sel label="Status" v={f.status ?? "in_store"} on={(v) => upd("status", v as AssetStatus)}
+            opts={(["in_use", "in_store", "faulty", "retired"] as const).map((s) => ({ v: s, l: statusLabel[s] }))} />
           <Inp label="Department" v={f.department ?? ""} on={(v) => upd("department", v)} />
           <Inp label="Room / Location" v={f.room ?? ""} on={(v) => upd("room", v)} />
-          <Inp label="Manufacturer / CPU Make" v={f.manufacturer ?? ""} on={(v) => upd("manufacturer", v)} />
-          <Inp label="Model" v={f.model ?? ""} on={(v) => upd("model", v)} />
-          <Inp label="Serial Number" v={f.serial_number ?? ""} on={(v) => upd("serial_number", v)} />
-          <Sel
-            label="Category"
-            v={f.category_id ?? ""}
-            on={(v) => upd("category_id", v || null)}
-            opts={[{ v: "", l: "—" }, ...cats.map((c) => ({ v: c.id, l: c.name }))]}
-          />
+          <Inp label="Designation" v={f.designation ?? ""} on={(v) => upd("designation", v)} />
+          <Sel label="Category" v={f.category_id ?? ""} on={(v) => upd("category_id", v || null)}
+            opts={[{ v: "", l: "—" }, ...cats.map((c) => ({ v: c.id, l: c.name }))]} />
+          <Inp label="CPU Make" v={f.cpu_make ?? ""} on={(v) => upd("cpu_make", v)} />
+          <Inp label="CPU Model" v={f.cpu_model ?? ""} on={(v) => upd("cpu_model", v)} />
+          <Inp label="CPU Serial" v={f.cpu_serial ?? ""} on={(v) => upd("cpu_serial", v)} />
+          <Inp label="Windows OS" v={f.windows_os ?? ""} on={(v) => upd("windows_os", v)} />
+          <Inp label="Printer Make" v={f.printer_make ?? ""} on={(v) => upd("printer_make", v)} />
+          <Inp label="Printer Model" v={f.printer_model ?? ""} on={(v) => upd("printer_model", v)} />
+          <Inp label="Printer Serial" v={f.printer_serial ?? ""} on={(v) => upd("printer_serial", v)} />
+          <Inp label="UPS Make / Model" v={f.ups_make_model ?? ""} on={(v) => upd("ups_make_model", v)} />
+          <Inp label="UPS Serial" v={f.ups_serial ?? ""} on={(v) => upd("ups_serial", v)} />
           <Inp label="Purchase Date" type="date" v={f.purchase_date ?? ""} on={(v) => upd("purchase_date", v || null)} />
           <Inp label="Purchase Cost (₹)" type="number" v={String(f.purchase_cost ?? "")} on={(v) => upd("purchase_cost", v ? Number(v) : 0)} />
           <div className="col-span-2">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-              Notes / Remarks
-            </label>
+            <label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Notes / Remarks</label>
             <textarea
-              value={f.notes ?? ""}
-              onChange={(e) => upd("notes", e.target.value)}
+              value={f.notes ?? ""} onChange={(e) => upd("notes", e.target.value)}
               className="w-full rounded-lg bg-input border border-border px-3 py-2 text-sm focus:outline-none focus:border-cyan-glow"
               rows={3}
             />
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-6">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-white/5">
-            Cancel
-          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-white/5">Cancel</button>
           <button
             onClick={() => onSave(f)}
             disabled={saving || !f.asset_tag}
             className="rounded-lg bg-gradient-to-r from-electric to-cyan-glow text-navy-deep font-semibold px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50"
           >
-            <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save"}
+            {isManager ? <Send className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saving ? "Submitting…" : (isManager ? "Send for Approval" : "Save")}
           </button>
         </div>
       </motion.div>
@@ -511,7 +484,6 @@ function Inp({ label, v, on, type = "text" }: { label: string; v: string; on: (v
     </div>
   );
 }
-
 function Sel({ label, v, on, opts }: { label: string; v: string; on: (v: string) => void; opts: { v: string; l: string }[] }) {
   return (
     <div>
