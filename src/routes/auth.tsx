@@ -109,18 +109,12 @@ function AuthPage() {
           <div className="absolute -top-4 -right-4 px-3 py-1 rounded-full bg-cyan-glow/20 border border-cyan-glow/40 text-[10px] uppercase tracking-widest text-cyan-glow flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3" /> Secure Access
           </div>
-          <h2 className="text-3xl font-bold mb-1">{mode === "signin" ? "Sign in" : "Create account"}</h2>
+          <h2 className="text-3xl font-bold mb-1">Sign in</h2>
           <p className="text-sm text-muted-foreground mb-8">
-            {mode === "signin" ? "Authenticate to access the asset portal." : "New accounts start with viewer access."}
+            Authenticate to access the asset portal.
           </p>
 
           <form onSubmit={submit} className="space-y-4">
-            {mode === "signup" && (
-              <>
-                <Field label="Full name" value={fullName} onChange={setFullName} placeholder="Amit Sharma" />
-                <Field label="Department" value={department} onChange={setDepartment} placeholder="IT Operations" />
-              </>
-            )}
             <Field icon={<Mail className="w-4 h-4" />} type="email" label="Email" value={email} onChange={setEmail} placeholder="you@aai.aero" required />
             <Field icon={<Lock className="w-4 h-4" />} type="password" label="Password" value={password} onChange={setPassword} placeholder="••••••••" required minLength={6} />
 
@@ -130,17 +124,16 @@ function AuthPage() {
               className="w-full mt-2 rounded-xl bg-gradient-to-r from-electric to-cyan-glow text-navy-deep font-semibold py-3.5 flex items-center justify-center gap-2 shadow-[0_10px_40px_-10px_oklch(0.72_0.18_220/0.8)] hover:shadow-[0_15px_50px_-10px_oklch(0.82_0.17_200/0.9)] transition disabled:opacity-60"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {mode === "signin" ? "Access Portal" : "Create Account"}
+              Access Portal
             </motion.button>
           </form>
 
-          <button
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="mt-6 text-xs text-muted-foreground hover:text-cyan-glow transition w-full text-center"
-          >
-            {mode === "signin" ? "First-time user? Create an account →" : "← Already have an account? Sign in"}
-          </button>
+          <p className="mt-6 text-[11px] text-muted-foreground text-center leading-relaxed">
+            Accounts are provisioned by AAI IT administration.<br />
+            Contact your admin to request access.
+          </p>
         </motion.div>
+
       </div>
     </div>
   );
