@@ -53,5 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export const useAuth = () => useContext(Ctx);
-export const canEdit = (r: Role | null) => r === "admin" || r === "manager";
+// Admin has direct edit. Manager can only submit change requests. Viewer (regular User) is read-only.
+export const canEdit = (r: Role | null) => r === "admin";
 export const canDelete = (r: Role | null) => r === "admin";
+export const canRequest = (r: Role | null) => r === "manager";
+export const roleLabel = (r: Role | null) => (r === "viewer" ? "user" : (r ?? "user"));
+

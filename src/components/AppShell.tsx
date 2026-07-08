@@ -2,26 +2,28 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Boxes, BarChart3, Upload, Download, ScrollText,
-  Users, AlertTriangle, Printer, FolderTree, LogOut, Settings2, Menu, X,
+  Users, AlertTriangle, Printer, FolderTree, LogOut, Settings2, Menu, X, ShieldCheck,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { useAuth } from "@/lib/auth";
+import { useAuth, roleLabel } from "@/lib/auth";
 import { AAILogo } from "@/components/AAILogo";
 import { toast } from "sonner";
 
 const nav = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/inventory", label: "Inventory", icon: Boxes },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/categories", label: "Categories", icon: FolderTree },
-  { to: "/alerts", label: "Low Stock Alerts", icon: AlertTriangle },
-  { to: "/import", label: "Excel Import", icon: Upload },
-  { to: "/export", label: "Export Data", icon: Download },
-  { to: "/print", label: "Print Report", icon: Printer },
-  { to: "/audit", label: "Audit Log", icon: ScrollText },
-  { to: "/users", label: "User Management", icon: Users },
-  { to: "/settings", label: "Settings", icon: Settings2 },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "manager", "viewer"] },
+  { to: "/inventory", label: "Inventory", icon: Boxes, roles: ["admin", "manager", "viewer"] },
+  { to: "/approvals", label: "Approvals", icon: ShieldCheck, roles: ["admin", "manager"] },
+  { to: "/analytics", label: "Analytics", icon: BarChart3, roles: ["admin", "manager"] },
+  { to: "/categories", label: "Categories", icon: FolderTree, roles: ["admin", "manager"] },
+  { to: "/alerts", label: "Low Stock Alerts", icon: AlertTriangle, roles: ["admin", "manager"] },
+  { to: "/import", label: "Excel Import", icon: Upload, roles: ["admin"] },
+  { to: "/export", label: "Export Data", icon: Download, roles: ["admin", "manager", "viewer"] },
+  { to: "/print", label: "Print Report", icon: Printer, roles: ["admin", "manager", "viewer"] },
+  { to: "/audit", label: "Audit Log", icon: ScrollText, roles: ["admin"] },
+  { to: "/users", label: "User Management", icon: Users, roles: ["admin", "manager"] },
+  { to: "/settings", label: "Settings", icon: Settings2, roles: ["admin", "manager", "viewer"] },
 ] as const;
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -51,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-        {nav.map((item) => {
+        {nav.filter((item) => !role || (item.roles as readonly string[]).includes(role)).map((item) => {
           const active = location.pathname === item.to || (item.to !== "/dashboard" && location.pathname.startsWith(item.to));
           const Icon = item.icon;
           return (
@@ -72,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+
       </nav>
 
       <div className="p-4 border-t border-border/40">
@@ -81,7 +84,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-medium truncate">{user?.email}</div>
-            <div className="text-[10px] uppercase tracking-wider text-cyan-glow">{role ?? "..."}</div>
+            <div className="text-[10px] uppercase tracking-wider text-cyan-glow">{roleLabel(role)}</div>
+
           </div>
         </div>
         <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 rounded-lg bg-destructive/15 hover:bg-destructive/25 text-destructive text-xs font-medium py-2 transition">
@@ -141,7 +145,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="text-xs sm:text-sm font-semibold tracking-tight truncate">Airports Authority of India</div>
               <span className="ml-2 text-[10px] uppercase tracking-widest text-cyan-glow/80 hidden md:inline shrink-0">IT Asset Command Center</span>
             </div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:block truncate max-w-[40vw]">{role ?? "..."} · {user?.email}</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:block truncate max-w-[40vw]">{roleLabel(role)} · {user?.email}</div>
           </div>
         </div>
         <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />

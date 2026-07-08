@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      approval_requests: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          request_type: string
+          requested_by: string
+          requested_by_email: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewed_by_email: string | null
+          status: string
+          summary: string | null
+          target_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          request_type: string
+          requested_by: string
+          requested_by_email?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_email?: string | null
+          status?: string
+          summary?: string | null
+          target_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          request_type?: string
+          requested_by?: string
+          requested_by_email?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_email?: string | null
+          status?: string
+          summary?: string | null
+          target_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -274,6 +325,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      inv_assigned_to_me: {
+        Args: { _assigned_to: string; _name: string }
         Returns: boolean
       }
     }

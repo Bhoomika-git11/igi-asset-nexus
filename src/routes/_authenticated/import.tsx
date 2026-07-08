@@ -284,17 +284,8 @@ function ImportPage() {
           department:     r.department || null,
           room:           r.room || null,
           status:         r.status,
+          status_text:    r.remarks || null,
           category_name:  r.category_name || null,
-          // original fields reused
-          manufacturer:   r.cpu_make || r.printer_make || null,
-          model:          r.cpu_model || r.printer_model || null,
-          serial_number:  r.cpu_serial || r.printer_serial || r.scanner_serial || r.ups_serial || null,
-          notes:          r.remarks || null,
-          // new AAI fields stored in notes as JSON string for now
-          // (until migration adds the columns — see SQL below)
-          // We store everything in notes as a fallback
-          // Once SQL migration runs, swap these to direct columns:
-          /*
           designation:    r.designation || null,
           cpu_make:       r.cpu_make || null,
           cpu_model:      r.cpu_model || null,
@@ -305,25 +296,16 @@ function ImportPage() {
           scanner_make:   r.scanner_make || null,
           scanner_model:  r.scanner_model || null,
           scanner_serial: r.scanner_serial || null,
-          ups_make:       r.ups_make || null,
+          ups_make_model: r.ups_make || null,
           ups_serial:     r.ups_serial || null,
           windows_os:     r.windows_os || null,
-          remarks:        r.remarks || null,
           source_sheet:   r.source_sheet || null,
-          */
-          // Temporary: pack extra fields into notes as readable text
-          // Remove this once SQL migration is applied
-          notes: [
-            r.remarks ? `Remarks: ${r.remarks}` : "",
-            r.designation ? `Designation: ${r.designation}` : "",
-            r.cpu_make ? `CPU: ${r.cpu_make} ${r.cpu_model} (S/N: ${r.cpu_serial})` : "",
-            r.printer_make ? `Printer: ${r.printer_make} ${r.printer_model} (S/N: ${r.printer_serial})` : "",
-            r.scanner_make ? `Scanner: ${r.scanner_make} ${r.scanner_model} (S/N: ${r.scanner_serial})` : "",
-            r.ups_make ? `UPS: ${r.ups_make} (S/N: ${r.ups_serial})` : "",
-            r.windows_os ? `OS: ${r.windows_os}` : "",
-            `Sheet: ${r.source_sheet}`,
-          ].filter(Boolean).join(" | "),
+          manufacturer:   r.cpu_make || r.printer_make || null,
+          model:          r.cpu_model || r.printer_model || null,
+          serial_number:  r.cpu_serial || r.printer_serial || r.scanner_serial || r.ups_serial || null,
+          notes:          r.remarks || null,
         }));
+
 
         const { error } = await supabase
           .from("inventory")
