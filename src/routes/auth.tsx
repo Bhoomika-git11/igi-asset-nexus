@@ -14,11 +14,8 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const nav = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [department, setDepartment] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,28 +28,16 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Access granted");
-        nav({ to: "/dashboard", replace: true });
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: { full_name: fullName, department },
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created — you can now sign in");
-        setMode("signin");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success("Access granted");
+      nav({ to: "/dashboard", replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed";
       toast.error(msg);
     } finally { setLoading(false); }
   };
+
 
   return (
     <div className="relative min-h-screen overflow-hidden flex items-center justify-center px-4">
