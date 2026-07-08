@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-        {nav.map((item) => {
+        {nav.filter((item) => !role || (item.roles as readonly string[]).includes(role)).map((item) => {
           const active = location.pathname === item.to || (item.to !== "/dashboard" && location.pathname.startsWith(item.to));
           const Icon = item.icon;
           return (
@@ -74,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+
       </nav>
 
       <div className="p-4 border-t border-border/40">
