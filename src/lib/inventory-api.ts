@@ -4,15 +4,18 @@ export type AssetStatus = "in_use" | "in_store" | "faulty" | "retired";
 
 export interface InventoryRow {
   id: string;
-  asset_tag: string;
+  asset_tag: string | null;
   name: string;
+  s_no: number | null;
   category_id: string | null;
   category_name: string | null;
   department: string | null;
   room: string | null;
   assigned_to: string | null;
+  sub_assigned_to: string | null;
+  parent_id: string | null;
   status: AssetStatus;
-  // Original fields
+  status_text: string | null;
   serial_number: string | null;
   manufacturer: string | null;
   model: string | null;
@@ -20,7 +23,6 @@ export interface InventoryRow {
   purchase_cost: number | null;
   warranty_expiry: string | null;
   notes: string | null;
-  // NEW AAI fields
   designation: string | null;
   cpu_make: string | null;
   cpu_model: string | null;
@@ -31,10 +33,9 @@ export interface InventoryRow {
   scanner_make: string | null;
   scanner_model: string | null;
   scanner_serial: string | null;
-  ups_make: string | null;
+  ups_make_model: string | null;
   ups_serial: string | null;
   windows_os: string | null;
-  remarks: string | null;
   source_sheet: string | null;
   created_at: string;
   updated_at: string;
@@ -61,13 +62,17 @@ export const statusLabel: Record<AssetStatus, string> = {
   retired: "Retired",
 };
 
+/** Show a friendly "Not Available" for missing values. */
+export const na = <T,>(v: T | null | undefined | ""): string =>
+  v === null || v === undefined || v === "" ? "Not Available" : String(v);
+
 export async function fetchInventory() {
   const { data, error } = await supabase
     .from("inventory")
     .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as InventoryRow[];
+  return (data ?? []) as unknown as InventoryRow[];
 }
 
 export async function fetchCategories() {
