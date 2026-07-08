@@ -2,26 +2,28 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Boxes, BarChart3, Upload, Download, ScrollText,
-  Users, AlertTriangle, Printer, FolderTree, LogOut, Settings2, Menu, X,
+  Users, AlertTriangle, Printer, FolderTree, LogOut, Settings2, Menu, X, ShieldCheck,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { useAuth } from "@/lib/auth";
+import { useAuth, roleLabel } from "@/lib/auth";
 import { AAILogo } from "@/components/AAILogo";
 import { toast } from "sonner";
 
 const nav = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/inventory", label: "Inventory", icon: Boxes },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/categories", label: "Categories", icon: FolderTree },
-  { to: "/alerts", label: "Low Stock Alerts", icon: AlertTriangle },
-  { to: "/import", label: "Excel Import", icon: Upload },
-  { to: "/export", label: "Export Data", icon: Download },
-  { to: "/print", label: "Print Report", icon: Printer },
-  { to: "/audit", label: "Audit Log", icon: ScrollText },
-  { to: "/users", label: "User Management", icon: Users },
-  { to: "/settings", label: "Settings", icon: Settings2 },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "manager", "viewer"] },
+  { to: "/inventory", label: "Inventory", icon: Boxes, roles: ["admin", "manager", "viewer"] },
+  { to: "/approvals", label: "Approvals", icon: ShieldCheck, roles: ["admin", "manager"] },
+  { to: "/analytics", label: "Analytics", icon: BarChart3, roles: ["admin", "manager"] },
+  { to: "/categories", label: "Categories", icon: FolderTree, roles: ["admin", "manager"] },
+  { to: "/alerts", label: "Low Stock Alerts", icon: AlertTriangle, roles: ["admin", "manager"] },
+  { to: "/import", label: "Excel Import", icon: Upload, roles: ["admin"] },
+  { to: "/export", label: "Export Data", icon: Download, roles: ["admin", "manager", "viewer"] },
+  { to: "/print", label: "Print Report", icon: Printer, roles: ["admin", "manager", "viewer"] },
+  { to: "/audit", label: "Audit Log", icon: ScrollText, roles: ["admin"] },
+  { to: "/users", label: "User Management", icon: Users, roles: ["admin", "manager"] },
+  { to: "/settings", label: "Settings", icon: Settings2, roles: ["admin", "manager", "viewer"] },
 ] as const;
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
