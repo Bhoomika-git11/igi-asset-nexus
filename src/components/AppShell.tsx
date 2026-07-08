@@ -145,7 +145,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="text-xs sm:text-sm font-semibold tracking-tight truncate">Airports Authority of India</div>
               <span className="ml-2 text-[10px] uppercase tracking-widest text-cyan-glow/80 hidden md:inline shrink-0">IT Asset Command Center</span>
             </div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:block truncate max-w-[40vw]">{role ?? "..."} · {user?.email}</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground hidden sm:block truncate max-w-[40vw]">{roleLabel(role)} · {user?.email}</div>
           </div>
         </div>
         <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
