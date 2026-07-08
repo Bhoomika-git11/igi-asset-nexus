@@ -84,7 +84,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-medium truncate">{user?.email}</div>
-            <div className="text-[10px] uppercase tracking-wider text-cyan-glow">{role ?? "..."}</div>
+            <div className="text-[10px] uppercase tracking-wider text-cyan-glow">{roleLabel(role)}</div>
+
           </div>
         </div>
         <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 rounded-lg bg-destructive/15 hover:bg-destructive/25 text-destructive text-xs font-medium py-2 transition">
