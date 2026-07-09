@@ -13,6 +13,7 @@ import {
   type AssetStatus,
   type InventoryRow,
 } from "@/lib/inventory-api";
+import { ASSET_CATEGORIES, DEPARTMENTS, WINDOWS_OS_OPTIONS, CPU_MAKES } from "@/lib/asset-categories";
 import { PageContainer, PageHeader, GlassCard } from "@/components/PageChrome";
 import { canDelete, canEdit, canRequest, useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -40,7 +41,9 @@ function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [roomFilter, setRoomFilter] = useState("all");
-  const [assignedFilter, setAssignedFilter] = useState("all");
+  const [assignedFilter, setAssignedFilter] = useState("");
+  const [osFilter, setOsFilter] = useState("all");
+  const [cpuMakeFilter, setCpuMakeFilter] = useState("all");
   const [page, setPage] = useState(1);
   const PER_PAGE = 25;
   const [open, setOpen] = useState(false);
@@ -48,22 +51,22 @@ function InventoryPage() {
 
   const uniq = (arr: (string | null)[]) =>
     Array.from(new Set(arr.map((v) => (v ?? "").trim()).filter(Boolean))).sort();
-  const departments = useMemo(() => uniq(inv.map((r) => r.department)), [inv]);
   const rooms = useMemo(() => uniq(inv.map((r) => r.room)), [inv]);
-  const assignees = useMemo(() => uniq(inv.map((r) => r.assigned_to)), [inv]);
-  const categories = useMemo(
-    () => uniq([...inv.map((r) => r.category_name), ...cats.map((c) => c.name)]),
-    [inv, cats],
-  );
 
   const filtered = useMemo(() => {
     const qq = q.toLowerCase().trim();
+    const assignedQ = assignedFilter.toLowerCase().trim();
     return inv.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (categoryFilter !== "all" && (r.category_name ?? "") !== categoryFilter) return false;
       if (departmentFilter !== "all" && (r.department ?? "") !== departmentFilter) return false;
       if (roomFilter !== "all" && (r.room ?? "") !== roomFilter) return false;
-      if (assignedFilter !== "all" && (r.assigned_to ?? "") !== assignedFilter) return false;
+      if (osFilter !== "all" && (r.windows_os ?? "").toLowerCase() !== osFilter.toLowerCase()) return false;
+      if (cpuMakeFilter !== "all" && (r.cpu_make ?? "").toUpperCase() !== cpuMakeFilter.toUpperCase()) return false;
+      if (assignedQ) {
+        const person = `${r.assigned_to ?? ""} ${r.name ?? ""} ${r.sub_assigned_to ?? ""}`.toLowerCase();
+        if (!person.includes(assignedQ)) return false;
+      }
       if (qq) {
         const hay = [
           r.asset_tag, r.name, r.department, r.room, r.assigned_to,
@@ -76,14 +79,15 @@ function InventoryPage() {
       }
       return true;
     });
-  }, [inv, q, statusFilter, categoryFilter, departmentFilter, roomFilter, assignedFilter]);
+  }, [inv, q, statusFilter, categoryFilter, departmentFilter, roomFilter, assignedFilter, osFilter, cpuMakeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const pageRows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const resetPage = () => setPage(1);
   const clearFilters = () => {
     setQ(""); setStatusFilter("all"); setCategoryFilter("all");
-    setDepartmentFilter("all"); setRoomFilter("all"); setAssignedFilter("all");
+    setDepartmentFilter("all"); setRoomFilter("all"); setAssignedFilter("");
+    setOsFilter("all"); setCpuMakeFilter("all");
     resetPage();
   };
 
