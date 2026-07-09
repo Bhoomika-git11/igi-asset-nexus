@@ -13,6 +13,7 @@ import {
   type AssetStatus,
   type InventoryRow,
 } from "@/lib/inventory-api";
+import { ASSET_CATEGORIES, DEPARTMENTS, WINDOWS_OS_OPTIONS, CPU_MAKES } from "@/lib/asset-categories";
 import { PageContainer, PageHeader, GlassCard } from "@/components/PageChrome";
 import { canDelete, canEdit, canRequest, useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -40,7 +41,9 @@ function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [roomFilter, setRoomFilter] = useState("all");
-  const [assignedFilter, setAssignedFilter] = useState("all");
+  const [assignedFilter, setAssignedFilter] = useState("");
+  const [osFilter, setOsFilter] = useState("all");
+  const [cpuMakeFilter, setCpuMakeFilter] = useState("all");
   const [page, setPage] = useState(1);
   const PER_PAGE = 25;
   const [open, setOpen] = useState(false);
@@ -48,22 +51,22 @@ function InventoryPage() {
 
   const uniq = (arr: (string | null)[]) =>
     Array.from(new Set(arr.map((v) => (v ?? "").trim()).filter(Boolean))).sort();
-  const departments = useMemo(() => uniq(inv.map((r) => r.department)), [inv]);
   const rooms = useMemo(() => uniq(inv.map((r) => r.room)), [inv]);
-  const assignees = useMemo(() => uniq(inv.map((r) => r.assigned_to)), [inv]);
-  const categories = useMemo(
-    () => uniq([...inv.map((r) => r.category_name), ...cats.map((c) => c.name)]),
-    [inv, cats],
-  );
 
   const filtered = useMemo(() => {
     const qq = q.toLowerCase().trim();
+    const assignedQ = assignedFilter.toLowerCase().trim();
     return inv.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (categoryFilter !== "all" && (r.category_name ?? "") !== categoryFilter) return false;
       if (departmentFilter !== "all" && (r.department ?? "") !== departmentFilter) return false;
       if (roomFilter !== "all" && (r.room ?? "") !== roomFilter) return false;
-      if (assignedFilter !== "all" && (r.assigned_to ?? "") !== assignedFilter) return false;
+      if (osFilter !== "all" && (r.windows_os ?? "").toLowerCase() !== osFilter.toLowerCase()) return false;
+      if (cpuMakeFilter !== "all" && (r.cpu_make ?? "").toUpperCase() !== cpuMakeFilter.toUpperCase()) return false;
+      if (assignedQ) {
+        const person = `${r.assigned_to ?? ""} ${r.name ?? ""} ${r.sub_assigned_to ?? ""}`.toLowerCase();
+        if (!person.includes(assignedQ)) return false;
+      }
       if (qq) {
         const hay = [
           r.asset_tag, r.name, r.department, r.room, r.assigned_to,
@@ -76,14 +79,15 @@ function InventoryPage() {
       }
       return true;
     });
-  }, [inv, q, statusFilter, categoryFilter, departmentFilter, roomFilter, assignedFilter]);
+  }, [inv, q, statusFilter, categoryFilter, departmentFilter, roomFilter, assignedFilter, osFilter, cpuMakeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const pageRows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const resetPage = () => setPage(1);
   const clearFilters = () => {
     setQ(""); setStatusFilter("all"); setCategoryFilter("all");
-    setDepartmentFilter("all"); setRoomFilter("all"); setAssignedFilter("all");
+    setDepartmentFilter("all"); setRoomFilter("all"); setAssignedFilter("");
+    setOsFilter("all"); setCpuMakeFilter("all");
     resetPage();
   };
 
@@ -199,13 +203,24 @@ function InventoryPage() {
           <FilterSelect label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(v as AssetStatus | "all"); resetPage(); }}
             options={[{ v: "all", l: "All statuses" }, ...(["in_use", "in_store", "faulty", "retired"] as const).map((s) => ({ v: s, l: statusLabel[s] }))]} />
           <FilterSelect label="Category" value={categoryFilter} onChange={(v) => { setCategoryFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All categories" }, ...categories.map((c) => ({ v: c, l: c }))]} />
+            options={[{ v: "all", l: "All categories" }, ...ASSET_CATEGORIES.map((c) => ({ v: c, l: c }))]} />
           <FilterSelect label="Department" value={departmentFilter} onChange={(v) => { setDepartmentFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All departments" }, ...departments.map((d) => ({ v: d, l: d }))]} />
+            options={[{ v: "all", l: "All departments" }, ...DEPARTMENTS.map((d) => ({ v: d, l: d }))]} />
           <FilterSelect label="Room" value={roomFilter} onChange={(v) => { setRoomFilter(v); resetPage(); }}
             options={[{ v: "all", l: "All rooms" }, ...rooms.map((r) => ({ v: r, l: r }))]} />
-          <FilterSelect label="Assigned To" value={assignedFilter} onChange={(v) => { setAssignedFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All users" }, ...assignees.map((a) => ({ v: a, l: a }))]} />
+          <FilterSelect label="Windows OS" value={osFilter} onChange={(v) => { setOsFilter(v); resetPage(); }}
+            options={[{ v: "all", l: "All OS" }, ...WINDOWS_OS_OPTIONS.map((o) => ({ v: o, l: o }))]} />
+          <FilterSelect label="CPU Make" value={cpuMakeFilter} onChange={(v) => { setCpuMakeFilter(v); resetPage(); }}
+            options={[{ v: "all", l: "All makes" }, ...CPU_MAKES.map((m) => ({ v: m, l: m }))]} />
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Assigned To</label>
+            <input
+              value={assignedFilter}
+              onChange={(e) => { setAssignedFilter(e.target.value); resetPage(); }}
+              placeholder="Search person…"
+              className="w-full rounded-lg bg-input border border-border px-3 py-2 text-sm focus:outline-none focus:border-cyan-glow"
+            />
+          </div>
           <button onClick={clearFilters}
             className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-white/[0.02] hover:bg-white/[0.06] text-xs text-muted-foreground py-2.5 transition">
             <FilterX className="w-3.5 h-3.5" /> Clear
@@ -248,21 +263,21 @@ function InventoryPage() {
                     {r.cpu_make || r.cpu_model || r.cpu_serial ? (
                       <>
                         <div className="text-xs truncate" title={`${r.cpu_make ?? ""} ${r.cpu_model ?? ""}`}>
-                          {[r.cpu_make, r.cpu_model].filter(Boolean).join(" ") || "Not Available"}
+                          {[r.cpu_make, r.cpu_model].filter(Boolean).join(" ") || "N/A"}
                         </div>
                         {r.cpu_serial && <div className="text-[9px] font-mono text-cyan-glow/70 truncate">{r.cpu_serial}</div>}
                       </>
-                    ) : <span className="text-muted-foreground text-xs">Not Available</span>}
+                    ) : <span className="text-muted-foreground text-xs">N/A</span>}
                   </Td>
                   <Td className="max-w-[150px]">
                     {r.printer_make || r.printer_model || r.printer_serial ? (
                       <>
                         <div className="text-xs truncate" title={`${r.printer_make ?? ""} ${r.printer_model ?? ""}`}>
-                          {[r.printer_make, r.printer_model].filter(Boolean).join(" ") || "Not Available"}
+                          {[r.printer_make, r.printer_model].filter(Boolean).join(" ") || "N/A"}
                         </div>
                         {r.printer_serial && <div className="text-[9px] font-mono text-cyan-glow/70 truncate">{r.printer_serial}</div>}
                       </>
-                    ) : <span className="text-muted-foreground text-xs">Not Available</span>}
+                    ) : <span className="text-muted-foreground text-xs">N/A</span>}
                   </Td>
                   <Td className="max-w-[120px] text-xs">
                     <div className="truncate" title={r.ups_make_model ?? ""}>{na(r.ups_make_model)}</div>

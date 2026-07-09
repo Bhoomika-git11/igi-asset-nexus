@@ -62,9 +62,13 @@ export const statusLabel: Record<AssetStatus, string> = {
   retired: "Retired",
 };
 
-/** Show a friendly "Not Available" for missing values. */
+/** Show "N/A" for missing values. Callers apply italic/muted styling. */
 export const na = <T,>(v: T | null | undefined | ""): string =>
-  v === null || v === undefined || v === "" ? "Not Available" : String(v);
+  v === null || v === undefined || v === "" ? "N/A" : String(v);
+
+/** True when a value should be rendered as N/A. */
+export const isBlank = (v: unknown): boolean =>
+  v === null || v === undefined || v === "";
 
 export async function fetchInventory() {
   const { data, error } = await supabase
