@@ -203,13 +203,24 @@ function InventoryPage() {
           <FilterSelect label="Status" value={statusFilter} onChange={(v) => { setStatusFilter(v as AssetStatus | "all"); resetPage(); }}
             options={[{ v: "all", l: "All statuses" }, ...(["in_use", "in_store", "faulty", "retired"] as const).map((s) => ({ v: s, l: statusLabel[s] }))]} />
           <FilterSelect label="Category" value={categoryFilter} onChange={(v) => { setCategoryFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All categories" }, ...categories.map((c) => ({ v: c, l: c }))]} />
+            options={[{ v: "all", l: "All categories" }, ...ASSET_CATEGORIES.map((c) => ({ v: c, l: c }))]} />
           <FilterSelect label="Department" value={departmentFilter} onChange={(v) => { setDepartmentFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All departments" }, ...departments.map((d) => ({ v: d, l: d }))]} />
+            options={[{ v: "all", l: "All departments" }, ...DEPARTMENTS.map((d) => ({ v: d, l: d }))]} />
           <FilterSelect label="Room" value={roomFilter} onChange={(v) => { setRoomFilter(v); resetPage(); }}
             options={[{ v: "all", l: "All rooms" }, ...rooms.map((r) => ({ v: r, l: r }))]} />
-          <FilterSelect label="Assigned To" value={assignedFilter} onChange={(v) => { setAssignedFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All users" }, ...assignees.map((a) => ({ v: a, l: a }))]} />
+          <FilterSelect label="Windows OS" value={osFilter} onChange={(v) => { setOsFilter(v); resetPage(); }}
+            options={[{ v: "all", l: "All OS" }, ...WINDOWS_OS_OPTIONS.map((o) => ({ v: o, l: o }))]} />
+          <FilterSelect label="CPU Make" value={cpuMakeFilter} onChange={(v) => { setCpuMakeFilter(v); resetPage(); }}
+            options={[{ v: "all", l: "All makes" }, ...CPU_MAKES.map((m) => ({ v: m, l: m }))]} />
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Assigned To</label>
+            <input
+              value={assignedFilter}
+              onChange={(e) => { setAssignedFilter(e.target.value); resetPage(); }}
+              placeholder="Search person…"
+              className="w-full rounded-lg bg-input border border-border px-3 py-2 text-sm focus:outline-none focus:border-cyan-glow"
+            />
+          </div>
           <button onClick={clearFilters}
             className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-white/[0.02] hover:bg-white/[0.06] text-xs text-muted-foreground py-2.5 transition">
             <FilterX className="w-3.5 h-3.5" /> Clear
