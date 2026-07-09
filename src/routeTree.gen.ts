@@ -12,6 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginUserRouteImport } from './routes/login.user'
+import { Route as LoginManagerRouteImport } from './routes/login.manager'
+import { Route as LoginAdminRouteImport } from './routes/login.admin'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPrintRouteImport } from './routes/_authenticated/print'
@@ -37,6 +40,21 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginUserRoute = LoginUserRouteImport.update({
+  id: '/login/user',
+  path: '/login/user',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginManagerRoute = LoginManagerRouteImport.update({
+  id: '/login/manager',
+  path: '/login/manager',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginAdminRoute = LoginAdminRouteImport.update({
+  id: '/login/admin',
+  path: '/login/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
@@ -115,6 +133,9 @@ export interface FileRoutesByFullPath {
   '/print': typeof AuthenticatedPrintRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/login/admin': typeof LoginAdminRoute
+  '/login/manager': typeof LoginManagerRoute
+  '/login/user': typeof LoginUserRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -131,6 +152,9 @@ export interface FileRoutesByTo {
   '/print': typeof AuthenticatedPrintRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/login/admin': typeof LoginAdminRoute
+  '/login/manager': typeof LoginManagerRoute
+  '/login/user': typeof LoginUserRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +173,9 @@ export interface FileRoutesById {
   '/_authenticated/print': typeof AuthenticatedPrintRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/login/admin': typeof LoginAdminRoute
+  '/login/manager': typeof LoginManagerRoute
+  '/login/user': typeof LoginUserRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,6 +194,9 @@ export interface FileRouteTypes {
     | '/print'
     | '/settings'
     | '/users'
+    | '/login/admin'
+    | '/login/manager'
+    | '/login/user'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -183,6 +213,9 @@ export interface FileRouteTypes {
     | '/print'
     | '/settings'
     | '/users'
+    | '/login/admin'
+    | '/login/manager'
+    | '/login/user'
   id:
     | '__root__'
     | '/'
@@ -200,12 +233,18 @@ export interface FileRouteTypes {
     | '/_authenticated/print'
     | '/_authenticated/settings'
     | '/_authenticated/users'
+    | '/login/admin'
+    | '/login/manager'
+    | '/login/user'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  LoginAdminRoute: typeof LoginAdminRoute
+  LoginManagerRoute: typeof LoginManagerRoute
+  LoginUserRoute: typeof LoginUserRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -229,6 +268,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/user': {
+      id: '/login/user'
+      path: '/login/user'
+      fullPath: '/login/user'
+      preLoaderRoute: typeof LoginUserRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/manager': {
+      id: '/login/manager'
+      path: '/login/manager'
+      fullPath: '/login/manager'
+      preLoaderRoute: typeof LoginManagerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/admin': {
+      id: '/login/admin'
+      path: '/login/admin'
+      fullPath: '/login/admin'
+      preLoaderRoute: typeof LoginAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/users': {
@@ -355,6 +415,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  LoginAdminRoute: LoginAdminRoute,
+  LoginManagerRoute: LoginManagerRoute,
+  LoginUserRoute: LoginUserRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
