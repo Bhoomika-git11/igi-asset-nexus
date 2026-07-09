@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated")({
     // Using getUser() here caused a network fetch on every navigation, which made
     // the router show a pending state and users perceived it as needing "two clicks".
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/auth" });
+    if (!data.session) throw redirect({ to: "/" });
   },
   component: () => <AppShell><Outlet /></AppShell>,
 });

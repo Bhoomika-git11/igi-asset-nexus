@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const handleLogout = async () => {
     await signOut();
     toast.success("Signed out");
-    navigate({ to: "/auth", replace: true });
+    navigate({ to: "/", replace: true });
   };
 
   const SidebarInner = (

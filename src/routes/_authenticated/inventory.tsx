@@ -263,21 +263,21 @@ function InventoryPage() {
                     {r.cpu_make || r.cpu_model || r.cpu_serial ? (
                       <>
                         <div className="text-xs truncate" title={`${r.cpu_make ?? ""} ${r.cpu_model ?? ""}`}>
-                          {[r.cpu_make, r.cpu_model].filter(Boolean).join(" ") || "Not Available"}
+                          {[r.cpu_make, r.cpu_model].filter(Boolean).join(" ") || "N/A"}
                         </div>
                         {r.cpu_serial && <div className="text-[9px] font-mono text-cyan-glow/70 truncate">{r.cpu_serial}</div>}
                       </>
-                    ) : <span className="text-muted-foreground text-xs">Not Available</span>}
+                    ) : <span className="text-muted-foreground text-xs">N/A</span>}
                   </Td>
                   <Td className="max-w-[150px]">
                     {r.printer_make || r.printer_model || r.printer_serial ? (
                       <>
                         <div className="text-xs truncate" title={`${r.printer_make ?? ""} ${r.printer_model ?? ""}`}>
-                          {[r.printer_make, r.printer_model].filter(Boolean).join(" ") || "Not Available"}
+                          {[r.printer_make, r.printer_model].filter(Boolean).join(" ") || "N/A"}
                         </div>
                         {r.printer_serial && <div className="text-[9px] font-mono text-cyan-glow/70 truncate">{r.printer_serial}</div>}
                       </>
-                    ) : <span className="text-muted-foreground text-xs">Not Available</span>}
+                    ) : <span className="text-muted-foreground text-xs">N/A</span>}
                   </Td>
                   <Td className="max-w-[120px] text-xs">
                     <div className="truncate" title={r.ups_make_model ?? ""}>{na(r.ups_make_model)}</div>
