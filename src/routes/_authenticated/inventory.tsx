@@ -13,7 +13,7 @@ import {
   type AssetStatus,
   type InventoryRow,
 } from "@/lib/inventory-api";
-import { ASSET_CATEGORIES, DEPARTMENTS, WINDOWS_OS_OPTIONS, CPU_MAKES } from "@/lib/asset-categories";
+import { ASSET_CATEGORIES } from "@/lib/asset-categories";
 import { PageContainer, PageHeader, GlassCard } from "@/components/PageChrome";
 import { canDelete, canEdit, canRequest, useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -36,37 +36,17 @@ function InventoryPage() {
   const { data: inv = [], isLoading } = useQuery({ queryKey: ["inventory"], queryFn: fetchInventory });
   const { data: cats = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
 
-  const [q, setQ] = useState("");
+ const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<AssetStatus | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [roomFilter, setRoomFilter] = useState("all");
-  const [assignedFilter, setAssignedFilter] = useState("");
-  const [osFilter, setOsFilter] = useState("all");
-  const [cpuMakeFilter, setCpuMakeFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const PER_PAGE = 25;
-  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<InventoryRow>>(emptyForm);
 
-  const uniq = (arr: (string | null)[]) =>
-    Array.from(new Set(arr.map((v) => (v ?? "").trim()).filter(Boolean))).sort();
-  const rooms = useMemo(() => uniq(inv.map((r) => r.room)), [inv]);
-
-  const filtered = useMemo(() => {
+ const filtered = useMemo(() => {
     const qq = q.toLowerCase().trim();
-    const assignedQ = assignedFilter.toLowerCase().trim();
     return inv.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (categoryFilter !== "all" && (r.category_name ?? "") !== categoryFilter) return false;
-      if (departmentFilter !== "all" && (r.department ?? "") !== departmentFilter) return false;
-      if (roomFilter !== "all" && (r.room ?? "") !== roomFilter) return false;
-      if (osFilter !== "all" && (r.windows_os ?? "").toLowerCase() !== osFilter.toLowerCase()) return false;
-      if (cpuMakeFilter !== "all" && (r.cpu_make ?? "").toUpperCase() !== cpuMakeFilter.toUpperCase()) return false;
-      if (assignedQ) {
-        const person = `${r.assigned_to ?? ""} ${r.name ?? ""} ${r.sub_assigned_to ?? ""}`.toLowerCase();
-        if (!person.includes(assignedQ)) return false;
-      }
       if (qq) {
         const hay = [
           r.asset_tag, r.name, r.department, r.room, r.assigned_to,
@@ -79,15 +59,13 @@ function InventoryPage() {
       }
       return true;
     });
-  }, [inv, q, statusFilter, categoryFilter, departmentFilter, roomFilter, assignedFilter, osFilter, cpuMakeFilter]);
+  }, [inv, q, statusFilter, categoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const pageRows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const resetPage = () => setPage(1);
   const clearFilters = () => {
     setQ(""); setStatusFilter("all"); setCategoryFilter("all");
-    setDepartmentFilter("all"); setRoomFilter("all"); setAssignedFilter("");
-    setOsFilter("all"); setCpuMakeFilter("all");
     resetPage();
   };
 
@@ -190,7 +168,7 @@ function InventoryPage() {
 
       {/* Filters */}
       <GlassCard className="p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="relative lg:col-span-2">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -204,23 +182,6 @@ function InventoryPage() {
             options={[{ v: "all", l: "All statuses" }, ...(["in_use", "in_store", "faulty", "retired"] as const).map((s) => ({ v: s, l: statusLabel[s] }))]} />
           <FilterSelect label="Category" value={categoryFilter} onChange={(v) => { setCategoryFilter(v); resetPage(); }}
             options={[{ v: "all", l: "All categories" }, ...ASSET_CATEGORIES.map((c) => ({ v: c, l: c }))]} />
-          <FilterSelect label="Department" value={departmentFilter} onChange={(v) => { setDepartmentFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All departments" }, ...DEPARTMENTS.map((d) => ({ v: d, l: d }))]} />
-          <FilterSelect label="Room" value={roomFilter} onChange={(v) => { setRoomFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All rooms" }, ...rooms.map((r) => ({ v: r, l: r }))]} />
-          <FilterSelect label="Windows OS" value={osFilter} onChange={(v) => { setOsFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All OS" }, ...WINDOWS_OS_OPTIONS.map((o) => ({ v: o, l: o }))]} />
-          <FilterSelect label="CPU Make" value={cpuMakeFilter} onChange={(v) => { setCpuMakeFilter(v); resetPage(); }}
-            options={[{ v: "all", l: "All makes" }, ...CPU_MAKES.map((m) => ({ v: m, l: m }))]} />
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">Assigned To</label>
-            <input
-              value={assignedFilter}
-              onChange={(e) => { setAssignedFilter(e.target.value); resetPage(); }}
-              placeholder="Search person…"
-              className="w-full rounded-lg bg-input border border-border px-3 py-2 text-sm focus:outline-none focus:border-cyan-glow"
-            />
-          </div>
           <button onClick={clearFilters}
             className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-white/[0.02] hover:bg-white/[0.06] text-xs text-muted-foreground py-2.5 transition">
             <FilterX className="w-3.5 h-3.5" /> Clear
