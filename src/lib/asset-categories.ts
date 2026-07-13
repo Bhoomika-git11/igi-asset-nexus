@@ -2,7 +2,6 @@
 // Order matters — it is the order shown in dropdowns and filters.
 export const ASSET_CATEGORIES = [
   "Desktop",
-  "Laptop",
   "All In One",
   "Desktop All In One",
   "Mono Printer",
